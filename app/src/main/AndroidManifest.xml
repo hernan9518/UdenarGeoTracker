@@ -21,7 +21,7 @@
         <!-- 2. Tu API Key de Google Cloud -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="AQUI_PEGA_TU_API_KEY_REAL" />
+            android:value="AIzaSyAKpV2HZKlcOSbEJoD8aAjnYj4svAz_RIk" />
 
         <activity
             android:name=".MainActivity"

@@ -1,4 +1,4 @@
-package com.example.udenargeotracker // <-- Asegúrate de que esto coincida con tu paquete
+package com.empresa.udenargeotracker
 
 import android.Manifest
 import android.content.pm.PackageManager
@@ -7,7 +7,6 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
-import com.empresa.udenargeotracker.R
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.CameraUpdateFactory
@@ -21,6 +20,9 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
 
     private lateinit var map: GoogleMap
     private lateinit var fusedLocationClient: FusedLocationProviderClient
+
+    // Variable para guardar tu ubicación y poder calcular distancias
+    private var currentUserLocation: android.location.Location? = null
 
     // Gestor moderno para pedir permisos en pantalla
     private val requestPermissionLauncher = registerForActivityResult(
@@ -48,10 +50,52 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
         mapFragment.getMapAsync(this)
     }
 
-    // Este metodo se dispara automáticamente cuando Google Maps termina de cargar
+    // Este método se dispara automáticamente cuando Google Maps termina de cargar
+// Este método se dispara automáticamente cuando Google Maps termina de cargar
     override fun onMapReady(googleMap: GoogleMap) {
         map = googleMap
         checkLocationPermissions()
+
+        // 1. NUEVO: Evento para borrar el marcador al tocar su cuadro de información
+        map.setOnInfoWindowClickListener { markerABorrar ->
+            markerABorrar.remove()
+            Toast.makeText(this, "Punto eliminado", Toast.LENGTH_SHORT).show()
+        }
+
+        // Evento de pulsación larga en el mapa para agregar pines interactivos
+        map.setOnMapLongClickListener { latLngPulsado ->
+
+            // Verificar que ya sepamos dónde está el usuario
+            currentUserLocation?.let { ubicacionUsuario ->
+
+                // Calcular la distancia usando la fórmula matemática del elipsoide WGS84
+                val resultados = FloatArray(1)
+                android.location.Location.distanceBetween(
+                    ubicacionUsuario.latitude, ubicacionUsuario.longitude,
+                    latLngPulsado.latitude, latLngPulsado.longitude,
+                    resultados
+                )
+
+                // Formatear la distancia para que se vea bonita (ej. 1450.50)
+                val distanciaEnMetros = resultados[0]
+                val distanciaFormateada = String.format("%.2f", distanciaEnMetros)
+
+                // Crear el marcador en donde el usuario tocó
+                val marcador = map.addMarker(
+                    MarkerOptions()
+                        .position(latLngPulsado)
+                        .title("A $distanciaFormateada metros de ti")
+                        // 2. MODIFICADO: Agregamos una instrucción clara en el subtítulo
+                        .snippet("Toca este cuadro para eliminar el punto")
+                )
+
+                // Mostrar el cuadrito de texto del marcador automáticamente
+                marcador?.showInfoWindow()
+            } ?: run {
+                // Si aún no tenemos la ubicación del usuario, mostramos un aviso
+                Toast.makeText(this, "Esperando tu ubicación GPS...", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     private fun checkLocationPermissions() {
@@ -77,10 +121,10 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
         // Obtener la última ubicación conocida y mover la cámara
         fusedLocationClient.lastLocation.addOnSuccessListener { location ->
             if (location != null) {
-                val currentLatLng = LatLng(location.latitude, location.longitude)
+                // Guardar la ubicación en la variable global para los cálculos
+                currentUserLocation = location
 
-                // Poner un marcador adicional en tu posición (opcional)
-                map.addMarker(MarkerOptions().position(currentLatLng).title("¡Estás aquí!"))
+                val currentLatLng = LatLng(location.latitude, location.longitude)
 
                 // Mover la cámara con una animación fluida y zoom nivel 15
                 map.animateCamera(CameraUpdateFactory.newLatLngZoom(currentLatLng, 15f))
