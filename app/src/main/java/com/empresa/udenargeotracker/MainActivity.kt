@@ -51,12 +51,11 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
     }
 
     // Este método se dispara automáticamente cuando Google Maps termina de cargar
-// Este método se dispara automáticamente cuando Google Maps termina de cargar
     override fun onMapReady(googleMap: GoogleMap) {
         map = googleMap
         checkLocationPermissions()
 
-        // 1. NUEVO: Evento para borrar el marcador al tocar su cuadro de información
+        // Evento para borrar el marcador al tocar su cuadro de información
         map.setOnInfoWindowClickListener { markerABorrar ->
             markerABorrar.remove()
             Toast.makeText(this, "Punto eliminado", Toast.LENGTH_SHORT).show()
@@ -65,10 +64,9 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
         // Evento de pulsación larga en el mapa para agregar pines interactivos
         map.setOnMapLongClickListener { latLngPulsado ->
 
-            // Verificar que ya sepamos dónde está el usuario
             currentUserLocation?.let { ubicacionUsuario ->
 
-                // Calcular la distancia usando la fórmula matemática del elipsoide WGS84
+                // 1. Calcular la distancia
                 val resultados = FloatArray(1)
                 android.location.Location.distanceBetween(
                     ubicacionUsuario.latitude, ubicacionUsuario.longitude,
@@ -76,23 +74,25 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
                     resultados
                 )
 
-                // Formatear la distancia para que se vea bonita (ej. 1450.50)
                 val distanciaEnMetros = resultados[0]
                 val distanciaFormateada = String.format("%.2f", distanciaEnMetros)
 
-                // Crear el marcador en donde el usuario tocó
+                // 2. NUEVO: Calcular tiempo estimado caminando (Promedio: 83.3 metros por minuto)
+                val metrosPorMinuto = 83.33f
+                val minutosEstimados = (distanciaEnMetros / metrosPorMinuto).toInt()
+                val textoTiempo = if (minutosEstimados < 1) "Menos de 1 min" else "~$minutosEstimados min"
+
+                // 3. Crear el marcador uniendo ambas informaciones
                 val marcador = map.addMarker(
                     MarkerOptions()
                         .position(latLngPulsado)
-                        .title("A $distanciaFormateada metros de ti")
-                        // 2. MODIFICADO: Agregamos una instrucción clara en el subtítulo
-                        .snippet("Toca este cuadro para eliminar el punto")
+                        .title("Distancia: $distanciaFormateada m")
+                        // MODIFICADO: Mostramos el tiempo y la instrucción de borrado
+                        .snippet("🚶 $textoTiempo caminando (Toca para borrar)")
                 )
 
-                // Mostrar el cuadrito de texto del marcador automáticamente
                 marcador?.showInfoWindow()
             } ?: run {
-                // Si aún no tenemos la ubicación del usuario, mostramos un aviso
                 Toast.makeText(this, "Esperando tu ubicación GPS...", Toast.LENGTH_SHORT).show()
             }
         }
